@@ -4,6 +4,16 @@
   "scripts": {
     "dev": "node scripts/dev-native.mjs",
     "build": "node scripts/build-native.mjs",
-    "test": "node tests/operations.test.cjs && node tests/native.test.cjs && node tests/worker.test.mjs && node tests/whatsapp.test.mjs && node tests/audit.test.mjs && node tests/pipeline-routes.test.mjs && node tests/sales-teams.test.mjs && node tests/excel-import.test.mjs && node tests/pipeline-editor.test.mjs && node tests/access.test.mjs && node tests/flow.test.mjs && node tests/commercial-user-form.test.mjs"
+    "test": "node tests/operations.test.cjs && node tests/native.test.cjs && node tests/worker.test.mjs && node tests/whatsapp.test.mjs && node tests/audit.test.mjs && node tests/pipeline-routes.test.mjs && node tests/sales-teams.test.mjs && node tests/excel-import.test.mjs && node tests/pipeline-editor.test.mjs && node tests/access.test.mjs && node tests/flow.test.mjs && node tests/commercial-user-form.test.mjs",
+    "build:vercel": "node scripts/build-vercel.mjs",
+    "test:vercel": "node --test tests/vercel.test.mjs",
+    "auth:user": "node scripts/create-auth-user.mjs",
+    "auth:secret": "node scripts/create-auth-user.mjs --secret"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "dependencies": {
+    "@libsql/client": "0.18.0"
   }
 }

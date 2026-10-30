@@ -12,3 +12,7 @@ dist/
 .DS_Store
 backups/
 exports/
+
+public/
+server/generated/
+.vercel/
