@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "framework": null,
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "public",
+  "installCommand": "npm install",
+  "functions": {
+    "api/index.mjs": {
+      "maxDuration": 60,
+      "includeFiles": "server/generated/**"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index?__crm_route=:path*"
+    },
+    {
+      "source": "/signin-with-chatgpt",
+      "destination": "/login.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/:path*",
+      "headers": [
+        {
+          "key": "Referrer-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "0 12 * * *"
+    }
+  ]
+}

@@ -2,9 +2,13 @@
 
 CRM modular com múltiplas empresas, negociações B2B, funis, subprocessos, equipes, automações nativas e central de operações configurável.
 
+## Vercel
+
+A adaptação para Vercel usa API Node.js, banco Turso/libSQL e login próprio com sessão assinada. Consulte [o guia de instalação](docs/VERCEL.md). O banco e as credenciais da hospedagem anterior não são migrados automaticamente.
+
 ## Desenvolvimento
 
-Requer Node.js 24 ou superior, incluindo `node:sqlite` para os testes e a prévia local. O projeto usa as APIs nativas do Node e não possui dependências npm externas de execução.
+Requer Node.js 24 ou superior, incluindo `node:sqlite` para os testes e a prévia local. O motor usa as APIs nativas do Node; o adaptador Vercel utiliza @libsql/client. Execute npm install antes dos comandos abaixo.
 
 ```sh
 npm run build
