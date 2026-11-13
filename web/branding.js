@@ -12,18 +12,18 @@ function brandCurrent(){return !pvRole?state.branding:null}
 function brandApply(){const b=brandCurrent();brandStyles.textContent='';const logo=document.querySelector('aside>.brand'),src=BrandingCore.logo(b,crmTheme);logo.innerHTML=src?`<img class="brand-logo" src="${esc(src)}" alt="Logo de ${esc(state.company)}"><span class="brand-company">${esc(state.company)}</span>`:brandOriginal;
 if(!b||!b.light&&!b.dark)return;
 for(const mode of ['light','dark']){if(!b[mode])continue;const c=BrandingCore.colors(b,mode),sel=`html[data-theme=${mode}]`;brandStyles.textContent+=`
-${sel} body,${sel} .workspace-expanded header{background:${c.background}}
+${sel} body,${sel} body.workspace-expanded main > header{background:${c.background}}
 ${sel} body{color:${BrandingCore.ink(c.background)}}
 ${sel} body>aside{background:${c.menu};color:${BrandingCore.ink(c.menu)}}
 ${sel} body>aside .brand,${sel} body>aside .workspace,${sel} body>aside .label,${sel} body>aside .asidefoot,${sel} body>aside .asidefoot span{color:${BrandingCore.ink(c.menu)}!important}
 ${sel} .btn.primary,${sel} .toast{background:${c.button};border-color:${c.button};color:${BrandingCore.ink(c.button)}}
 ${sel} body>aside .nav.active{background:${c.primary};color:${BrandingCore.ink(c.primary)}}
-${sel} .link,${sel} .deal-open{color:${c.secondary}}
-${sel} .brand span,${sel} .overline{color:${c.secondary}}
-${sel} .progress span{background:${c.primary}}
+${sel} .link,${sel} #app .deal-open{color:${c.secondary}}
+${sel} .overline{color:${c.secondary}}
+${sel} .progress span{background:${c.secondary}}
 ${sel} input,${sel} select{accent-color:${c.primary}}
 ${sel} input:focus,${sel} textarea:focus,${sel} select:focus{outline-color:${c.primary}}
-${sel} .kanban-column.drop-active{border-color:${c.primary}}
+${sel} #app .kanban-column.drop-active{border-color:${c.primary}}
 `;}}
 function brandColorFields(){const labels={primary:'Cor principal',secondary:'Cor secundária / links',background:'Fundo do site',menu:'Menu lateral',button:'Botões de ação'};const colors=BrandingCore.colors(brandDraft,brandEditMode);return BrandingCore.keys.map(k=>`<label class="field">${labels[k]}<span class="brand-color-input"><input type="color" aria-label="Selecionar ${labels[k]}" data-picker="${k}" value="${colors[k]}"><input class="brand-hex" aria-label="Código HEX: ${labels[k]}" data-hex="${k}" value="${colors[k]}" maxlength="7" pattern="#[0-9a-fA-F]{6}" required></span></label>`).join('')}
 function brandLogoFields(){return `<h2>Logos por tema</h2><p>Envie um PNG de até 160 KB para cada modo.</p><div class="brand-theme-logos">${['light','dark'].map(mode=>`<section class="brand-theme-logo"><h3>Modo ${mode==='light'?'claro':'escuro'}</h3><label class="field">Logo do modo ${mode==='light'?'claro':'escuro'}<input class="brand-file" data-logo-mode="${mode}" type="file" accept="image/png,.png" ${brandUploadBusy?'disabled':''}></label><div class="brand-logo-box" id="brandLogoBox-${mode}"></div><button class="link" data-remove-logo="${mode}" type="button" ${brandUploadBusy?'disabled':''}>Remover logo do modo ${mode==='light'?'claro':'escuro'}</button></section>`).join('')}</div>`}
