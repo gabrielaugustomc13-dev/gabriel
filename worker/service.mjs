@@ -7,13 +7,18 @@ async function putWorkspace(env,id,state,name,expected,initialImport=false,whats
  const existing=await getWorkspace(env,id);
  if((existing?.version||0)!==expected)return {conflict:true,currentVersion:existing?.version||0};
  if(!whatsappInternal){if(existing?.state.whatsapp)state.whatsapp=structuredClone(existing.state.whatsapp);else delete state.whatsapp}
- CRMCore.validateSalesTeams(state);CRMCore.syncSellerNames(state,existing?.state);NativeCore.validatePipelineRoutes(state);FlowCore.validate(state,existing?.state);
+ // Preserve retired configurations for backup without accepting edits from older clients.
+ for(const key of ['flowHub','fields','modules']){
+  if(existing && Object.hasOwn(existing.state,key))state[key]=existing.state[key];
+  else if(existing||!initialImport)delete state[key];
+ }
+ CRMCore.validateSalesTeams(state);CRMCore.syncSellerNames(state,existing?.state);NativeCore.validatePipelineRoutes(state);
  for(const d of state.deals||[])if(d.pipelineJourney&&d.pipelineId!==d.pipelineJourney.targetPipelineId)throw Error('Conclua o subprocesso antes de transferir manualmente para outro funil');
  validateState(state,existing?.state,!existing&&initialImport);state.workspaceId=id;NativeCore.init(state);
  // Apply routing to direct snapshot writes too; existing stationary records are not swept on rule activation.
  if(existing||!initialImport)for(const d of state.deals){const old=existing?.state.deals.find(x=>x.id===d.id);if(!PipelineEditorCore.sameStage(existing?.state,state,old,d)||d.pipelineRouteError)NativeCore.advanceRoute(state,d)}
  validateState(state,existing?.state,!existing&&initialImport);NativeCore.tick(state);
- const now=new Date().toISOString();FlowCore.process(state,existing?.state,now,actor.label);FlowCore.validate(state,existing?.state);const serialized=JSON.stringify(state),version=expected+1,token=crypto.randomUUID();
+ const now=new Date().toISOString();const serialized=JSON.stringify(state),version=expected+1,token=crypto.randomUUID();
  if(serialized.length>1500000)throw Error('Ambiente excede o limite de armazenamento desta versão');
  const entries=AuditCore.collect(existing?.state,state,{workspaceId:id,version,at:now,actor,initialImport:!existing&&initialImport,name});
  const write=!existing
@@ -23,7 +28,7 @@ async function putWorkspace(env,id,state,name,expected,initialImport=false,whats
  const result=await env.DB.batch([write,...auditInsertStatements(env,entries,id,version,token)]);
  return result[0].meta.changes?{version,state,updatedAt:now}:{conflict:true};
 }
-async function tickWorkspace(env,id){for(let attempt=0;attempt<3;attempt++){const row=await getWorkspace(env,id);if(!row)return;const before=JSON.stringify(row.state);NativeCore.tick(row.state);const due=row.state.flowHub?.recurrences.some(r=>r.active&&r.nextDate<=FlowCore.today());if(JSON.stringify(row.state)===before&&!due)return row;const result=await putWorkspace(env,id,row.state,row.name,row.version);if(!result.conflict)return result}return {conflict:true}}
+async function tickWorkspace(env,id){for(let attempt=0;attempt<3;attempt++){const row=await getWorkspace(env,id);if(!row)return;const before=JSON.stringify(row.state);NativeCore.tick(row.state);if(JSON.stringify(row.state)===before)return row;const result=await putWorkspace(env,id,row.state,row.name,row.version);if(!result.conflict)return result}return {conflict:true}}
 async function tickAll(env){const rows=await env.DB.prepare('SELECT id FROM native_workspaces ORDER BY updated_at ASC LIMIT 100').all();for(const row of rows.results)await tickWorkspace(env,row.id)}
 function checkOrigin(req){const origin=req.headers.get('origin');return !origin||origin===new URL(req.url).origin}
 export default {
