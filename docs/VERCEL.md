@@ -63,13 +63,13 @@ A sessão dura até oito horas e fica em cookie HttpOnly, Secure, SameSite=Stric
 
 Antes de qualquer transição, exporte os dados JSON de cada empresa e mantenha o CRM anterior como referência. Uma nova instalação inicia em um banco diferente; o deploy não migra dados, membros, auditoria ou histórico WhatsApp automaticamente.
 
-Não troque o endereço usado pela equipe antes de importar e conferir os dados em uma migração específica. O código do construtor e das automações já acompanha esta adaptação; a base real ainda precisa de uma transferência validada.
+Não troque o endereço usado pela equipe antes de importar e conferir os dados em uma migração específica. As automações comerciais já acompanham esta adaptação; a base real ainda precisa de uma transferência validada.
 
 ## 7. Cron e integrações
 
 vercel.json define uma chamada diária às 12:00 UTC (09:00 em São Paulo) para /api/cron. O endpoint só executa com o Bearer CRON_SECRET. Verifique no painel a criação e os resultados do cron; disponibilidade, precisão do horário e limites dependem do plano Vercel. A requisição aguarda o processamento antes de terminar.
 
-O motor atual processa até 100 empresas por rodada. Esta rotina diária é adequada para manutenção diária e recorrências; não garante tarefas com SLA de 15 minutos nem follow-up com precisão de minutos com o CRM fechado. Para isso, será necessário ajustar frequência/particionamento conforme o plano e validar as execuções.
+O motor atual processa até 100 empresas por rodada. Esta rotina diária é adequada para manutenção diária; não garante tarefas com SLA de 15 minutos nem follow-up com precisão de minutos com o CRM fechado. Para isso, será necessário ajustar frequência/particionamento conforme o plano e validar as execuções.
 
 WhatsApp, ERP externo, bancos e emissão fiscal permanecem dependentes de configuração própria. Esta alteração não conecta números nem ativa envio de mensagens. O adaptador Meta existente continua sem webhook público isolado habilitado.
 

@@ -30,7 +30,6 @@ function crmAnalystMerge(previous,incoming,a){
   if(oldStage!==d.stage){if(oldStatus!=='Aberta')throw Error('Reabra a negociação antes de mudar de etapa.');const p=s.pipelines.find(p=>p.id===d.pipelineId);if(!p?.stages[d.stage]||CRMCore.missing(s,d,p,d.stage).length)throw Error('Preencha os campos obrigatórios da etapa.');NativeCore.dispatch(s,'stage_changed',{dealId:d.id,eventId:crypto.randomUUID()})}
   if(oldStatus!==d.status&&d.status!=='Aberta'){const result=NativeCore.dispatch(s,d.status==='Ganha'?'deal_won':'deal_lost',{dealId:d.id,eventId:crypto.randomUUID()});if(result.blocked)throw Error('Preencha os campos obrigatórios do fechamento.')}
  }
- for(const t of incoming.tasks||[]){const old=s.tasks.find(x=>x.id===t.id);if(!old||!allowed.has(old.dealId))continue;if(typeof t.done==='boolean'){old.done=t.done;if(t.done)old.completedAt=new Date().toISOString()}}
  if(['kanban','list'].includes(incoming.pipelineView))s.pipelineView=incoming.pipelineView;
  if(s.pipelines.some(p=>p.id===incoming.activePipelineId))s.activePipelineId=incoming.activePipelineId;
  return s;

@@ -9,7 +9,7 @@ for(const name of await readdir('web')){
  await writeFile('public/'+name,body);
 }
 for(const name of ['login.html','vercel-ui.js'])await copyFile('vercel/'+name,'public/'+name);
-const sources=['web/operations-core.js','web/branding-core.js','web/company-core.js','web/native-core.js','web/pipeline-editor-core.js','web/flow-core.js','web/audit-core.js','worker/audit.mjs','worker/whatsapp.mjs','worker/access.mjs','worker/service.mjs'];
+const sources=['web/operations-core.js','web/branding-core.js','web/company-core.js','web/native-core.js','web/pipeline-editor-core.js','web/audit-core.js','worker/audit.mjs','worker/whatsapp.mjs','worker/access.mjs','worker/service.mjs'];
 const chunks=await Promise.all(sources.map(path=>readFile(path,'utf8')));
 await writeFile('server/generated/worker.mjs','const ASSETS={};\n'+chunks.join('\n')+'\nexport {putWorkspace};\n');
 const migrations=[];

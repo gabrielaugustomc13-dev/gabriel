@@ -30,3 +30,25 @@ for(const bad of [{cnpj:'123'},{email:'invalido'},{website:'javascript:alert(1)'
 assert.equal((await req('workspaces/test')).body.version,2);
 const profileAudit=(await req('workspaces/test/audit')).body.items.find(e=>e.changes.some(c=>c.field==='companyProfile'));assert(profileAudit);assert.equal(profileAudit.changes.find(c=>c.field==='companyProfile').after.cnpj,'••••0181');
 console.log('✓ Empresa contratante: edição, nome do ambiente, persistência, isolamento e validação de cadastro.');
+
+// Old snapshots must remain usable without running or changing the retired modules.
+const retired=structuredClone(state);
+retired.flowHub={recurrences:[{id:'old',active:true,nextDate:'2000-01-01'}],records:[]};
+retired.fields=[{id:'legacy',name:'Valor antigo',type:'text'}];
+retired.modules={pipeline:true};
+r=await req('workspaces/retired','PUT',{state:retired,expectedVersion:0,initialImport:true});
+assert.equal(r.status,200);
+await req('workspaces/retired/tick','POST');
+const legacy=(await req('workspaces/retired')).body;
+assert.deepEqual(legacy.state.flowHub,retired.flowHub);
+const edited=structuredClone(legacy.state);
+edited.company='Empresa sem módulos antigos';
+edited.flowHub.records.push({id:'attempted-write'});
+edited.fields=[];
+delete edited.modules;
+r=await req('workspaces/retired','PUT',{state:edited,expectedVersion:legacy.version});
+assert.equal(r.status,200);
+assert.equal(r.body.state.company,edited.company);
+assert.deepEqual(r.body.state.flowHub,retired.flowHub);
+assert.deepEqual(r.body.state.fields,retired.fields);
+assert.deepEqual(r.body.state.modules,retired.modules);
