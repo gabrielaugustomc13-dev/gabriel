@@ -57,6 +57,8 @@ body > aside > .nav.crm-nav-item {
   border-radius: 8px; overflow-wrap: anywhere;
 }
 body > aside > .nav.crm-nav-item[hidden] { display: none; }
+body > aside > .label { margin-top: 14px; }
+body > aside > .label[hidden] { display: none !important; }
 body > aside > .nav:hover { background: #aab7dc1c; }
 body > aside > .nav.active { background: #dbe3ff; color: #263991; font-weight: 700; }
 body > aside > .asidefoot { padding: 16px 10px 0; opacity: .72; font-size: 11px; }
@@ -116,12 +118,13 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 
 /* Overview */
-.stats { gap: 14px; margin-bottom: 18px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.stats { gap: 14px; margin-bottom: 18px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1080px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .stat { padding: 18px; min-width: 0; }
 .stat-label { display: flex; align-items: center; gap: 9px; color: var(--muted); font-weight: 650; }
 .stat-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 8px; background: var(--accent-soft); color: var(--accent); }
-.stat strong { margin: 12px 0 2px; font-size: clamp(24px, 2.4vw, 33px); line-height: 1.15; letter-spacing: -.04em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.overview-grid { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.45fr); gap: 16px; align-items: start; }
+.stat strong { margin: 12px 0 2px; font-size: clamp(21px, 2vw, 29px); line-height: 1.15; letter-spacing: -.04em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.overview-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .overview-panel { padding: 18px; min-width: 0; }
 .overview-panel .sectionhead { margin-bottom: 10px; gap: 10px; }
 .overview-panel h2 { margin: 0; }
@@ -133,6 +136,21 @@ tbody tr:last-child td { border-bottom: 0; }
 .pipeline-summary li + li { margin-top: 15px; }
 .pipeline-summary li > div:first-child { display: flex; justify-content: space-between; gap: 14px; overflow-wrap: anywhere; }
 .pipeline-summary .progress { height: 7px; margin: 7px 0 0; }
+.overview-wide { grid-column: 1 / -1; }
+.funnel-block + .funnel-block { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); }
+.funnel-block h3 { margin: 0; font-size: 13px; color: var(--muted); }
+.funnel-figures { display: flex; align-items: baseline; gap: 10px; flex: none; font-variant-numeric: tabular-nums; }
+.funnel-figures .muted { font-size: 12px; }
+.task-list { padding: 0; margin: 14px 0 0; list-style: none; }
+.task-list li + li { border-top: 1px solid var(--line); }
+.task-list .empty { padding: 18px 0 6px; }
+.task-row { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 9px 4px; background: none; border: 0; border-radius: 6px; color: inherit; text-align: left; }
+button.task-row:hover { background: var(--subtle); }
+.task-due { flex: none; min-width: 42px; padding: 2px 6px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 650; text-align: center; }
+.task-due.is-late, .badge.task-late-count { background: #fde8ec; color: #94303d; }
+.task-text { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.task-text .muted { font-size: 12px; }
+.task-more { margin: 10px 0 0; font-size: 12px; }
 
 /* Pipeline */
 #app .pipeline-config-bar, #app .pipeline-toolbar { gap: 12px; }
@@ -151,12 +169,26 @@ tbody tr:last-child td { border-bottom: 0; }
 #app .drop-label { color: var(--accent); border-color: var(--accent); }
 #app .kanban-column > .sectionhead { gap: 8px; margin-bottom: 3px; }
 #app .kanban-column > .empty { padding: 16px 8px; margin-top: 14px; border: 1px dashed var(--line); border-radius: 8px; font-size: 12px; }
-#app .kanban-card { margin-top: 11px; padding: 11px; border-radius: 9px; }
-.kanban-card .card-top { min-width: 0; }
-.kanban-card .drag-grip { color: var(--muted); }
-.kanban-card .deal-value { margin: 0 0 9px; color: var(--ink); font-weight: 710; font-size: 16px; font-variant-numeric: tabular-nums; }
-.kanban-card .deal-meta { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-.kanban-card .badge { padding: 3px 6px; flex: none; }
+#app .kanban-board { grid-template-columns: repeat(var(--stage-count, 4), minmax(204px, 1fr)); gap: 10px; }
+#app .kanban-card { position: relative; margin-top: 8px; padding: 9px 10px 10px; border-radius: 9px; }
+.kanban-card .card-top { min-width: 0; font-size: 12px; }
+.kanban-card .card-top > .muted { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kanban-card .drag-grip { color: var(--muted); font-size: 15px; padding: 2px 4px; margin-right: -4px; opacity: .55; }
+.kanban-card:hover .drag-grip { opacity: 1; }
+.kanban-card .deal-title { display: block; margin: 2px 0 7px; font-size: 13.5px; line-height: 1.3; }
+.kanban-card .deal-value { color: var(--ink); font-weight: 710; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kanban-card .deal-meta { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.kanban-card .deal-owner { margin-left: auto; min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kanban-card .badge { padding: 2px 6px; flex: none; }
+/* Negociação aberta é o estado normal da coluna: só o resultado (ganha/perdida) merece selo. */
+.kanban-card .badge[data-status="Aberta"] { display: none; }
+/* Com mouse, arrastar move o cartão; o seletor de etapa fica fora da vista e
+   aparece ao receber foco do teclado. No toque ele continua sempre visível. */
+@media (hover: hover) and (pointer: fine) {
+  .kanban-card .card-stage:not(:focus-within) {
+    position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%);
+  }
+}
 .badge[data-status="Ganha"] { color: #13644e; background: #dbf4e9; }
 .badge[data-status="Perdida"] { color: #94303d; background: #fde8ec; }
 .kanban-card .card-stage { margin-top: 10px; }
