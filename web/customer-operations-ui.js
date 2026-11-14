@@ -72,6 +72,7 @@ function operationForm(action,id){
  if(action==='pay')fields=field('Data do pagamento','paidAt',lifecycleToday(),'date',true);
  openModal(`<form id="operationForm"><h2>${{session:'Criar turma',contract:'Novo contrato',pay:'Registrar pagamento'}[action]}</h2>${fields}<p role="alert" id="operationFormError"></p>${footer()}</form>`);
  const form=$('#operationForm');
+ enhanceConfiguredForm(form,action,!id);
  form.onsubmit=async event=>{
   event.preventDefault();const button=event.submitter;button.disabled=true;
   try{
