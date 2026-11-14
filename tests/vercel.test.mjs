@@ -89,8 +89,9 @@ test('master creates, resets and revokes company logins through access managemen
   assert.equal((await call('native/workspaces/'+workspace,{method:'PUT',body:{state,expectedVersion:0,initialImport:true}})).status,200);
  }
  await call(members,{method:'POST',body:{userId:'admin',role:'admin',label:'Admin'}});
- const account = {role:'analyst',label:'Analista',sellerId:'seller',credentials:{login:'novo@example.com',password}};
+ const account = {role:'analyst',label:'Analista',sellerId:'seller',credentials:{login:'123',password:'123'}};
  assert.equal((await call(members,{user:'admin',method:'POST',body:account})).status,403);
+ assert.equal((await call(members,{method:'POST',body:{...account,credentials:{...account.credentials,password:''}}})).status,400);
  assert.equal((await call(members,{method:'POST',body:account})).status,200);
  assert.equal((await call(members,{method:'POST',body:account})).status,400);
  const items = (await call(members)).body.items;
@@ -100,15 +101,15 @@ test('master creates, resets and revokes company logins through access managemen
  assert.ok(!JSON.stringify(items).includes('scrypt'));
  const login = password => call('auth/login',{user:null,method:'POST',body:{login:member.login,password}});
  const token = result => result.headers.get('set-cookie').split(';')[0];
- const oldSession = token(await login(password));
+ const oldSession = token(await login(account.credentials.password));
  const access = (workspace,cookie) => call('native/workspaces/'+workspace,{user:null,headers:{cookie}});
  assert.equal((await access('alpha',oldSession)).status,200);
  assert.equal((await access('beta',oldSession)).status,403);
- const newPassword = 'Outra-senha-exclusiva-123';
+ const newPassword = '456';
  const edit = {...account,userId:member.user_id,credentials:{...account.credentials,password:newPassword}};
  assert.equal((await call(members,{method:'POST',body:edit})).status,200);
  assert.equal((await access('alpha',oldSession)).status,401);
- assert.equal((await login(password)).status,401);
+ assert.equal((await login(account.credentials.password)).status,401);
  const newSession = token(await login(newPassword));
  assert.equal((await access('alpha',newSession)).status,200);
  assert.equal((await call(members,{method:'DELETE',body:{userId:member.user_id}})).status,200);

@@ -7,8 +7,7 @@ logout.onclick=async()=>{if(nativeSyncBusy||nativeSyncDirty||nativeSyncError)ret
 document.querySelector('main>header')?.append(logout);
 function vercelAccountForm(member) {
  const workspace = activeWorkspace;
- const passwordHelp = member?.login ? 'Preencha para alterar o e-mail ou redefinir a senha.' :
-  'Use pelo menos 12 caracteres.';
+ const passwordHelp = member?.login ? 'Preencha a nova senha para alterar as credenciais.' : '';
  const profileOptions = [
   ['admin', 'Administrador'], ['analyst', 'Analista']
  ].map(([value, label]) => `<option value="${value}" ${member?.role === value ? 'selected' : ''}>${label}</option>`).join('');
@@ -16,11 +15,13 @@ function vercelAccountForm(member) {
   <h2>${member ? 'Editar acesso' : 'Criar usuário'}</h2>
   ${field('Nome de exibição', 'label', member?.label || '', 'text', true)}
   ${member?.externalLogin ? `<p>Login: ${esc(member.login)}. Credenciais gerenciadas pela Vercel.</p>` : `
-  ${field('E-mail de login', 'login', member?.login || '', 'email', !member)}
-  <label class="field">${member ? 'Nova senha' : 'Senha inicial'}
-   <input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="256" ${member ? '' : 'required'}>
+  <label class="field">Login
+   <input name="login" type="text" value="${esc(member?.login || '')}" maxlength="160" autocomplete="username" ${member?.login || !member ? 'required' : ''}>
   </label>
-  <p class="muted">${passwordHelp}</p>`}
+  <label class="field">${member ? 'Nova senha' : 'Senha inicial'}
+   <input type="password" name="password" autocomplete="new-password" maxlength="256" ${member ? '' : 'required'}>
+  </label>
+  ${passwordHelp ? `<p class="muted">${passwordHelp}</p>` : ''}`}
   ${selectField('Perfil', 'role', profileOptions)}
   ${selectField('Usuário comercial (obrigatório para analista)', 'sellerId',
    '<option value="">Selecionar</option>' + opts(state.sellers.filter(seller => seller.active !== false), member?.seller_id || ''))}
@@ -35,7 +36,7 @@ function vercelAccountForm(member) {
   if (member) data.userId = member.user_id;
   if (!member?.externalLogin && (!member || password || login.trim() !== (member.login || ''))) {
    if (!password) {
-    error.textContent = 'Defina uma senha para salvar o e-mail de login.';
+    error.textContent = 'Defina uma senha para salvar o login.';
     return;
    }
    data.credentials = {login:login.trim(), password};

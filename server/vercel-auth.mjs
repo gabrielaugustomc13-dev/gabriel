@@ -19,8 +19,8 @@ export function accounts(env){
  }
  return users;
 }
-export async function hashPassword(password){
- if(typeof password!=='string'||password.length<12||Buffer.byteLength(password)>256)throw Error('Use uma senha de 12 a 256 bytes.');
+export async function hashPassword(password, minimumLength=12){
+ if(typeof password!=='string'||password.length<minimumLength||Buffer.byteLength(password)>256)throw Error(`Use pelo menos ${minimumLength} caracteres e no máximo 256 bytes.`);
  const salt=randomBytes(16).toString('hex'),hash=await scrypt(password,salt,64,{N:32768,r:8,p:1,maxmem:64*1024*1024});
  return 'scrypt$'+salt+'$'+hash.toString('hex');
 }

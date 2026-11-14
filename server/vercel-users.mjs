@@ -20,16 +20,16 @@ export function accountManagement(db, configuredUsers) {
    return configuredUsers.find(user => user.id === userId)?.login;
   },
   async save(userId, login, password) {
-   if (typeof login !== 'string' || login.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(login)) {
-    throw Error('Informe um e-mail válido para o login.');
+   login = typeof login === 'string' ? login.trim().toLowerCase() : '';
+   if (!login || login.length > 160 || /[^!-~]/.test(login)) {
+    throw Error('Informe um login sem espaços, de até 160 caracteres.');
    }
-   login = login.toLowerCase();
    if (configuredUsers.some(user => user.login === login || user.id === userId)) {
-    throw Error('E-mail ou identificador já utilizado.');
+    throw Error('Login ou identificador já utilizado.');
    }
    const existing = await storedAccount(db, 'login', login);
-   if (existing && existing.id !== userId) throw Error('E-mail já utilizado.');
-   const hash = await hashPassword(password);
+   if (existing && existing.id !== userId) throw Error('Login já utilizado.');
+   const hash = await hashPassword(password, 1);
    return db.prepare(
     'INSERT INTO crm_auth_users (user_id, login, password_hash) VALUES (?, ?, ?) ' +
     'ON CONFLICT(user_id) DO UPDATE SET login=excluded.login, password_hash=excluded.password_hash'

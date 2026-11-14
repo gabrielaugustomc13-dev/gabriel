@@ -53,7 +53,7 @@ Sem configuração válida, a API responde 503 e não concede acesso master auto
 
 Abra /login.html no endereço Vercel. Entre com o login e senha configurados. O login master acessa todas as empresas do novo banco.
 
-No CRM, o Gestor Master usa **Acessos da empresa → Criar usuário** para definir e-mail, senha inicial e perfil. Analistas precisam de um usuário comercial ativo da empresa. O painel permite editar perfis, redefinir senhas e revogar acessos. As contas criadas no painel são salvas no Turso e funcionam assim que o cadastro é concluído. A redefinição da senha e a revogação invalidam as sessões dessas contas.
+No CRM, o Gestor Master usa **Acessos da empresa → Criar usuário** para definir login, senha inicial e perfil. Analistas precisam de um usuário comercial ativo da empresa. O painel permite editar perfis, redefinir senhas e revogar acessos. As contas criadas no painel são salvas no Turso e funcionam assim que o cadastro é concluído. A redefinição da senha e a revogação invalidam as sessões dessas contas.
 
 As credenciais já cadastradas em `CRM_AUTH_USERS_JSON` continuam válidas. Para alterar a senha dessas contas, atualize o hash na Vercel e faça redeploy. Revogar o vínculo no painel bloqueia o acesso aos dados da empresa.
 
