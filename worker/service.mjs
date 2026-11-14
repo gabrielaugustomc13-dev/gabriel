@@ -3,10 +3,22 @@ const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:
 const validId=id=>typeof id==='string'&&/^[a-zA-Z0-9_-]{1,120}$/.test(id);
 function validateState(s,previous,initialImport=false){BrandingCore.validate(s?.branding);CompanyCore.validate(s);if(!s||!Array.isArray(s.deals)||!Array.isArray(s.pipelines)||!Array.isArray(s.clients))throw Error('Estrutura de ambiente inválida');if(s.deals.length>5000||s.clients.length>10000)throw Error('Limite deste ambiente excedido');for(const d of s.deals){const p=s.pipelines.find(p=>p.id===d.pipelineId);if(!p||!Number.isInteger(d.stage)||!p.stages[d.stage])throw Error('Funil ou etapa inválidos');const old=previous?.deals?.find(x=>x.id===d.id);if(!PipelineEditorCore.sameStage(previous,s,old,d)){const missing=CRMCore.missing(s,d,p,d.stage);if(missing.length){if(initialImport)d.migrationReview=missing;else throw Error('Campos obrigatórios ausentes: '+missing.join(', '))}}if(d.status==='Perdida'&&old?.status!=='Perdida'&&!String(d.lossReason||'').trim()){if(initialImport)d.migrationReview=['lossReason'];else throw Error('Informe o motivo da perda.')}if(d.status==='Ganha'&&old?.status!=='Ganha'){const missing=NativeCore.winMissing(s,d);if(missing.length){if(initialImport)d.migrationReview=missing;else throw Error('Fechamento incompleto: '+missing.join(', '))}}}}
 async function getWorkspace(env,id){const row=await env.DB.prepare('SELECT id, name, state_json, version, updated_at FROM native_workspaces WHERE id = ?').bind(id).first();return row?{id:row.id,name:row.name,state:JSON.parse(row.state_json),version:row.version,updatedAt:row.updated_at}:null}
-async function putWorkspace(env,id,state,name,expected,initialImport=false,whatsappInternal=false,actor=auditActor(null,'system')){
+async function putWorkspace(env,id,state,name,expected,initialImport=false,whatsappInternal=false,actor=auditActor(null,'system'),customerInternal=false){
  const existing=await getWorkspace(env,id);
  if((existing?.version||0)!==expected)return {conflict:true,currentVersion:existing?.version||0};
  if(!whatsappInternal){if(existing?.state.whatsapp)state.whatsapp=structuredClone(existing.state.whatsapp);else delete state.whatsapp}
+ if(!customerInternal){
+  if(existing?.state.customerOperations){
+   state.customerOperations=structuredClone(existing.state.customerOperations);
+   if(state.lifecycle){
+    for(const [key,records] of [['plans',state.customerOperations.contracts],['classes',state.customerOperations.bookings]]){
+     const owned=new Set(records.map(row=>row.id));
+     state.lifecycle[key]=[...(state.lifecycle[key]||[]).filter(row=>!owned.has(row.id)),...(existing.state.lifecycle?.[key]||[]).filter(row=>owned.has(row.id))];
+    }
+   }
+  }
+  else delete state.customerOperations;
+ }
  // Preserve retired configurations for backup without accepting edits from older clients.
  for(const key of ['flowHub','fields','modules']){
   if(existing && Object.hasOwn(existing.state,key))state[key]=existing.state[key];
@@ -41,6 +53,11 @@ try{
 const access=await crmAccess(request,env);
 if(url.pathname==='/api/native/access/me')return json({access,identity:{userId:request.headers.get('oai-authenticated-user-id'),name:auditActor(request).label},configured:!!env.CRM_MASTER_USER_ID});
 if(!access)return json({error:'Seu usuário ainda não tem acesso a esta operação. Solicite o vínculo ao gestor master.'},403);
+if(access.role==='customer'){
+ if(url.pathname!=='/api/native/customer-operations')return json({error:'Recurso não autorizado'},403);
+ return await customerOperationsHandler(request,env,url,access);
+}
+if(url.pathname==='/api/native/customer-operations')return await customerOperationsHandler(request,env,url,access);
 if(access.role==='viewer')return await crmViewerRead(request,env,url,access);
 if(url.pathname==='/api/native/access/members')return await crmMembers(request,env,url,access);
 if(url.pathname.startsWith('/api/native/whatsapp/')){const wid=url.pathname.split('/')[4];if(!crmCompanyAllowed(access,wid)||access.role==='analyst')return json({error:'Canal não autorizado'},403);return await waHandler(request,env,url)}

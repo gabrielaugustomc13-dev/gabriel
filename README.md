@@ -46,3 +46,15 @@ O build gera `dist/server/index.mjs` e os metadados de hospedagem. O arquivo `.o
 **Agendamento:** existe processamento nativo por requisição/tick e handler `scheduled`. Configure e verifique um agendador de produção antes de depender de execução com a interface fechada.
 
 Este repositório contém código, modelos e dados fictícios dos testes. Não inclui base de clientes, banco de produção, tokens ou histórico de conversas. A publicação do código no GitHub não transfere o banco nem hospeda a API em GitHub Pages.
+
+## Operação e portal do cliente
+
+Em **Operação e agenda**, gestores e administradores criam turmas semanais com professor, horário de Brasília, duração e vagas. A reserva exige plano ativo na data da aula. A fila de espera é promovida quando há cancelamento antes da aula. Presença e ausência são registradas pelo operador após o início.
+
+Contratos geram de 1 a 36 mensalidades, com vencimento mensal ajustado ao último dia do mês quando necessário. Pausar ou encerrar cancela parcelas pendentes com vencimento a partir da data atual. Retomar reabre as parcelas suspensas ainda não vencidas. Recebimentos são confirmados manualmente.
+
+O Master cria o perfil **Cliente (portal)** em **Acessos da empresa**, vinculado a uma ficha. Esse cliente usa o login da plataforma para consultar planos, mensalidades, frequência e reservar/cancelar aulas. O servidor determina a ficha pelo usuário autenticado.
+
+O painel mostra pagamentos vencidos, planos a vencer em sete dias e clientes ativos cuja última presença ocorreu há mais de dez dias. A aba **Começar** contém a sequência de implantação e o uso de armazenamento.
+
+A versão mantém o limite atual de 1.500.000 caracteres por empresa. Antes de uso comercial em volume, é necessário dimensionar o armazenamento e testar a restauração de backup. Cobrança bancária, WhatsApp automático, envio de convites e recuperação por e-mail dependem de integrações ainda não configuradas.

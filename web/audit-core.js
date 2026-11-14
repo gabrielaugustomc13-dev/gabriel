@@ -15,6 +15,15 @@ const rows=[],at=context.at||new Date().toISOString(),actor=context.actor||{id:'
 const add=(action,entityType,entityId,entityName,summary,delta=[],dealId='',override)=>{const a=override||actor;rows.push({eventId:crypto.randomUUID(),workspaceId:context.workspaceId||next.workspaceId,version:context.version,occurredAt:at,actorId:a.id,actorLabel:a.label,actorType:a.type,source:a.source,action,entityType,entityId:String(entityId||''),entityName:String(entityName||'').slice(0,200),summary:String(summary).slice(0,1800),changes:delta,dealId})};
 if(!previous){add(context.initialImport?'workspace.imported':'workspace.created','workspace',context.workspaceId,context.name||next.company,'Ambiente registrado no servidor; início da auditoria.',[{field:'baseline',label:'Base inicial',before:null,after:{negociacoes:next.deals?.length||0,contatos:next.clients?.length||0,funis:next.pipelines?.length||0}}]);return rows}
 for(const [collection,keys]of Object.entries(fields)){const old=new Map((previous[collection]||[]).map(x=>[x.id,x])),fresh=new Map((next[collection]||[]).map(x=>[x.id,x]));for(const id of new Set([...old.keys(),...fresh.keys()])){const a=old.get(id),b=fresh.get(id),record=b||a;if(!record)continue;const delta=changes(a,b,keys,previous,next);if(!delta.length)continue;let action=!a?'created':!b?'deleted':'updated';if(a&&b){if(collection==='deals'){if(a.pipelineId!==b.pipelineId)action='pipeline_changed';else if(a.stage!==b.stage)action='stage_changed';else if(a.status!==b.status)action='status_changed';else if(a.owner!==b.owner)action='owner_changed';else if(a.operationalStatus!==b.operationalStatus)action='vertical_changed';else if(a.priority!==b.priority)action='priority_changed'}if(collection==='tasks'){if(!a.done&&b.done)action='completed';else if(!a.cancelled&&b.cancelled)action='cancelled'}if(['flows','rules'].includes(collection)&&a.enabled!==b.enabled)action=b.enabled?'enabled':'disabled'}const name=record.name||record.title||record.type||record.text||id;add(collection+'.'+action,collection,id,name,`${nouns[collection]} ${!a?'criado(a)':!b?'removido(a)':'alterado(a)'}: ${name}`,delta,collection==='deals'?id:record.dealId||'')}}
+
+for(const key of ['sessions','bookings','contracts']){
+ const before=new Map((previous.customerOperations?.[key]||[]).map(row=>[row.id,row]));
+ for(const row of next.customerOperations?.[key]||[]){
+  const prior=before.get(row.id);
+  const delta=changes(prior,row,['title','clientId','instructor','date','time','duration','capacity','status','cancelled','months','cents'],previous,next);
+  if(delta.length)add('customer_operations.'+(!prior?'created':'updated'),'lifecycle',row.id,row.title||row.id,'Operação de cliente atualizada',delta);
+ }
+}
 for (const [key,label] of Object.entries({plans:'Plano',classes:'Aula',payments:'Cobrança',notes:'Interação'})) {
  const old=new Map((previous.lifecycle?.[key]||[]).map(row=>[row.id,row]));
  const current=new Map((next.lifecycle?.[key]||[]).map(row=>[row.id,row]));

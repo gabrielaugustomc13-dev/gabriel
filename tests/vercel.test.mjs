@@ -180,3 +180,51 @@ test('viewer only receives approved screens and selected client records', async 
  assert.equal((await call(members,{method:'DELETE',body:{userId:member.user_id}})).status,200);
  assert.equal((await read('native/viewer')).status,401);
 });
+
+test('operational agenda, contracts and portal enforce capacity, identity and idempotency',async t=>{
+ const {call,env}=await setup(t);
+ const state={company:'Academia',clients:[{id:'ana',name:'Ana'},{id:'bia',name:'Bia'}],orgs:[],deals:[],tasks:[],pipelines:[]};
+ const workspace='native/workspaces/pilot',endpoint='native/customer-operations?workspaceId=pilot';
+ assert.equal((await call(workspace,{method:'PUT',body:{state,expectedVersion:0,initialImport:true}})).status,200);
+ const action=body=>call(endpoint,{method:'POST',body});
+ const date=new Date(Date.now()+86400000*7).toISOString().slice(0,10);
+ for(const clientId of ['ana','bia']){
+  const contract={action:'contract',id:'contract-'+clientId,clientId,date,title:'Mensal',months:3,cents:10000};
+  assert.equal((await action(contract)).status,200);
+  assert.equal((await action(contract)).status,200);
+ }
+ assert.equal((await call(endpoint)).body.lifecycle.payments.length,6);
+ const members='native/access/members?workspaceId=pilot';
+ for(const clientId of ['ana','bia'])assert.equal((await call(members,{method:'POST',body:{role:'customer',label:clientId,permissions:{portalClientId:clientId},credentials:{login:clientId,password:'123'}}})).status,200);
+ const login=await call('auth/login',{user:null,method:'POST',body:{login:'ana',password:'123'}});
+ const headers={cookie:login.headers.get('set-cookie').split(';')[0]};
+ const portal=(method='GET',body)=>call('native/customer-operations',{user:null,headers,method,body});
+ assert.equal((await call('native/access/me',{user:null,headers})).body.access.role,'customer');
+ assert.equal((await call(workspace,{user:null,headers})).status,403);
+ assert.equal((await portal('POST',{action:'pay',id:'contract-bia-bill-0',paidAt:date})).status,400);
+ const session={action:'session',id:'yoga',date,time:'12:00',title:'Yoga',instructor:'Ana professora',capacity:1,duration:60,weeks:2};
+ assert.equal((await action(session)).status,200);
+ assert.equal((await action(session)).body.sessions.length,2);
+ assert.equal((await action({...session,id:'collision'})).status,400);
+ const attempts=await Promise.all([portal('POST',{action:'book',id:'yoga-0',clientId:'bia'}),action({action:'book',id:'yoga-0',clientId:'bia'})]);
+ assert.deepEqual(attempts.map(result=>result.status),[200,200]);
+ const bookings=(await call(endpoint)).body.bookings;
+ assert.equal(bookings.filter(row=>row.status==='Reservado').length,1);
+ assert.equal(bookings.filter(row=>row.status==='Espera').length,1);
+ assert.equal((await portal()).body.bookings[0].clientId,'ana');
+ assert.equal((await portal()).body.lifecycle.payments.length,3);
+ assert.ok(!(await portal()).body.clients);
+ const first=bookings.find(row=>row.status==='Reservado');
+ assert.equal((await action({action:'cancel_booking',id:'yoga-0',clientId:first.clientId})).status,200);
+ assert.equal((await call(endpoint)).body.bookings.filter(row=>row.status==='Reservado').length,1);
+ assert.equal((await action({action:'contract_status',id:'contract-ana',status:'Pausado'})).body.lifecycle.payments.filter(row=>row.clientId==='ana'&&row.status==='Cancelado').length,3);
+ assert.equal((await action({action:'contract_status',id:'contract-ana',status:'Ativo'})).body.lifecycle.payments.filter(row=>row.clientId==='ana'&&row.status==='Pendente').length,3);
+ const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo'}).format(new Date());
+ assert.equal((await action({action:'pay',id:'contract-ana-bill-0',paidAt:today})).status,200);
+ assert.equal((await action({action:'contract_status',id:'contract-ana',status:'Encerrado'})).body.lifecycle.payments.find(row=>row.id==='contract-ana-bill-0').status,'Pago');
+ const before=(await call(workspace)).body;
+ const edited=structuredClone(before.state);edited.customerOperations={sessions:[],bookings:[],contracts:[]};
+ assert.equal((await call(workspace,{method:'PUT',body:{state:edited,expectedVersion:before.version}})).body.state.customerOperations.sessions.length,2);
+ const audit=await env.DB.prepare("SELECT * FROM native_audit_entries WHERE source = 'customer_operations'").all();
+ assert.ok(audit.results.length>0);
+});
