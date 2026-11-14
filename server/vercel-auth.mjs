@@ -35,15 +35,20 @@ export function issueSession(user,env,now=Date.now()){
  const body=Buffer.from(JSON.stringify({sub:user.id,exp:Math.floor(now/1000)+TTL,version:digest(user.passwordHash)})).toString('base64url');
  return body+'.'+sign(body,env);
 }
-export function sessionUser(request,env,users,now=Date.now()){
+export function sessionClaims(request,env,now=Date.now()){
  try {
   const raw=(request.headers.get('cookie')||'').split(';').map(s=>s.trim()).find(s=>s.startsWith(COOKIE+'='))?.slice(COOKIE.length+1);
   if(!raw||raw.length>2048)return null;
   const [body,signature,...rest]=raw.split('.');
   if(rest.length||!signature||!equal(signature,sign(body,env)))return null;
-  const claims=JSON.parse(Buffer.from(body,'base64url').toString('utf8')),user=users.find(u=>u.id===claims.sub);
-  return user&&Number.isSafeInteger(claims.exp)&&claims.exp>Math.floor(now/1000)&&claims.exp<=Math.floor(now/1000)+TTL&&claims.version===digest(user.passwordHash)?user:null;
+  const claims=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));
+  return typeof claims.sub==='string'&&Number.isSafeInteger(claims.exp)&&claims.exp>Math.floor(now/1000)&&claims.exp<=Math.floor(now/1000)+TTL?claims:null;
  }catch{return null}
+}
+export function sessionUser(request,env,users,now=Date.now()){
+ const claims=sessionClaims(request,env,now);
+ const user=claims&&users.find(u=>u.id===claims.sub);
+ return user&&claims.version===digest(user.passwordHash)?user:null;
 }
 export function sessionCookie(token,maxAge=TTL){return COOKIE+'='+token+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age='+maxAge}
 export async function loginAllowed(db,ip,now=Date.now()){

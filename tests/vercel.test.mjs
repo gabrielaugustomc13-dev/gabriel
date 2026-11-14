@@ -80,3 +80,39 @@ test('cron is isolated, secret-protected and awaits scheduled work',async t=>{
  response=await route(new Request(env.APP_URL+'/api/cron',{headers:{authorization:'Bearer '+env.CRON_SECRET}}),env,scheduled);
  assert.equal(response.status,200);assert.equal(completed,true);
 });
+
+test('master creates, resets and revokes company logins through access management', async t => {
+ const {call, env} = await setup(t);
+ const members = 'native/access/members?workspaceId=alpha';
+ const state = {company:'Alpha', clients:[], orgs:[], deals:[], tasks:[], pipelines:[{id:'p',name:'Comercial',stages:[{id:'s',name:'Novo'}]}], sellers:[{id:'seller',name:'Analista',active:true}]};
+ for (const workspace of ['alpha','beta']) {
+  assert.equal((await call('native/workspaces/'+workspace,{method:'PUT',body:{state,expectedVersion:0,initialImport:true}})).status,200);
+ }
+ await call(members,{method:'POST',body:{userId:'admin',role:'admin',label:'Admin'}});
+ const account = {role:'analyst',label:'Analista',sellerId:'seller',credentials:{login:'novo@example.com',password}};
+ assert.equal((await call(members,{user:'admin',method:'POST',body:account})).status,403);
+ assert.equal((await call(members,{method:'POST',body:account})).status,200);
+ assert.equal((await call(members,{method:'POST',body:account})).status,400);
+ const items = (await call(members)).body.items;
+ const member = items.find(item=>item.login===account.credentials.login);
+ assert.ok(member);
+ assert.equal(items.length,2);
+ assert.ok(!JSON.stringify(items).includes('scrypt'));
+ const login = password => call('auth/login',{user:null,method:'POST',body:{login:member.login,password}});
+ const token = result => result.headers.get('set-cookie').split(';')[0];
+ const oldSession = token(await login(password));
+ const access = (workspace,cookie) => call('native/workspaces/'+workspace,{user:null,headers:{cookie}});
+ assert.equal((await access('alpha',oldSession)).status,200);
+ assert.equal((await access('beta',oldSession)).status,403);
+ const newPassword = 'Outra-senha-exclusiva-123';
+ const edit = {...account,userId:member.user_id,credentials:{...account.credentials,password:newPassword}};
+ assert.equal((await call(members,{method:'POST',body:edit})).status,200);
+ assert.equal((await access('alpha',oldSession)).status,401);
+ assert.equal((await login(password)).status,401);
+ const newSession = token(await login(newPassword));
+ assert.equal((await access('alpha',newSession)).status,200);
+ assert.equal((await call(members,{method:'DELETE',body:{userId:member.user_id}})).status,200);
+ assert.equal((await access('alpha',newSession)).status,401);
+ assert.equal((await login(newPassword)).status,401);
+ assert.equal(await env.DB.prepare('SELECT user_id FROM crm_auth_users WHERE user_id = ?').bind(member.user_id).first(),null);
+});

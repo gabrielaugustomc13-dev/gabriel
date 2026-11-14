@@ -1,4 +1,5 @@
-import {accounts,appOrigin,equal,issueSession,verifyPassword,sessionCookie,sessionUser,loginAllowed} from './vercel-auth.mjs';
+import {accountManagement,storedAccount} from './vercel-users.mjs';
+import {accounts,appOrigin,equal,issueSession,verifyPassword,sessionCookie,sessionUser,sessionClaims,loginAllowed} from './vercel-auth.mjs';
 const json=(body,status=200,headers={})=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json;charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...headers}});
 export function trustedRequest(request,user,env) {
  const headers=new Headers(request.headers);
@@ -27,9 +28,10 @@ export async function route(request,env,worker) {
    if(!(await loginAllowed(env.DB,request.headers.get('x-real-ip'))))return json({error:'Muitas tentativas. Aguarde 15 minutos.'},429,{'retry-after':'900'});
    const raw=await request.text();if(Buffer.byteLength(raw)>4096)return json({error:'Conteúdo muito grande'},413);
    let data;try{data=JSON.parse(raw)}catch{return json({error:'Dados inválidos'},400)}
-   const user=users.find(u=>u.login===String(data.login||'').trim().toLowerCase());
+   const login=String(data?.login||'').trim().toLowerCase();
+   const user=users.find(u=>u.login===login)||await storedAccount(env.DB,'login',login);
    // Use a real configured hash for unknown accounts to keep the password work equivalent.
-   const valid=await verifyPassword(data.password,user?.passwordHash||users[0].passwordHash);
+   const valid=await verifyPassword(data?.password,user?.passwordHash||users[0].passwordHash);
    if(!user||!valid)return json({error:'Login ou senha inválidos.'},401);
    return json({signedIn:true},200,{'set-cookie':sessionCookie(issueSession(user,env))});
   }
@@ -37,9 +39,12 @@ export async function route(request,env,worker) {
    if(method!=='POST')return json({error:'Método não permitido'},405);
    return json({signedOut:true},200,{'set-cookie':sessionCookie('',0)});
   }
-  const user=sessionUser(request,env,users);if(!user)return json({error:'Entre no CRM para continuar.'},401);
+  const claims=sessionClaims(request,env);
+  const stored=claims&&!users.some(u=>u.id===claims.sub)?await storedAccount(env.DB,'id',claims.sub):null;
+  const user=sessionUser(request,env,stored?[stored]:users);if(!user)return json({error:'Entre no CRM para continuar.'},401);
   if(!url.pathname.startsWith('/api/native/'))return json({error:'Rota não encontrada'},404);
-  const tasks=[],response=await worker.fetch(trustedRequest(request,user,env),env,{waitUntil:p=>tasks.push(p)});
+  const workerEnv=url.pathname==='/api/native/access/members'?{...env,accountManagement:accountManagement(env.DB,users)}:env;
+  const tasks=[],response=await worker.fetch(trustedRequest(request,user,env),workerEnv,{waitUntil:p=>tasks.push(p)});
   await Promise.all(tasks);
   if(url.pathname==='/api/native/status'&&response.ok) {
    const data=await response.json();Object.assign(data,{storage:'libSQL',scheduler:env.CRON_SECRET?'vercel_daily_cron':'request_driven',unattended:!!env.CRON_SECRET,message:'Banco persistente libSQL. Cron diário sujeito à configuração e ao plano Vercel.'});
