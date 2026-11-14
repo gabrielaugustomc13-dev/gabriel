@@ -5,5 +5,54 @@ crmAccessBlocked=function(info){document.documentElement.classList.remove('acces
 const logout=document.createElement('button');logout.type='button';logout.className='link';logout.textContent='Sair';
 logout.onclick=async()=>{if(nativeSyncBusy||nativeSyncDirty||nativeSyncError)return toast('Conclua a sincronização antes de sair para preservar suas alterações.');try{const response=await fetch('/api/auth/logout',{method:'POST'});if(!response.ok)throw Error('Não foi possível encerrar a sessão.');for(const key of Object.keys(localStorage))if(key.startsWith('flexivel'))localStorage.removeItem(key);location.replace('/login.html')}catch(error){toast(error.message)}};
 document.querySelector('main>header')?.append(logout);
-const vercelRenderBefore=render;
-render=function(){vercelRenderBefore();const host=document.querySelector('#app');if(host&&page==='access_members')for(const text of [...host.querySelectorAll('p,.notice')]){if(text.textContent.includes('compartilhamento do site'))text.textContent='O login é configurado pelo gestor no ambiente Vercel. O vínculo abaixo determina a empresa e o perfil.';else if(text.textContent.includes('Perfis vinculados ao login do ChatGPT'))text.textContent='Perfis vinculados ao login autorizado do CRM.'}};
+function vercelAccountForm(member) {
+ const workspace = activeWorkspace;
+ const passwordHelp = member?.login ? 'Preencha para alterar o e-mail ou redefinir a senha.' :
+  'Use pelo menos 12 caracteres.';
+ const profileOptions = [
+  ['admin', 'Administrador'], ['analyst', 'Analista']
+ ].map(([value, label]) => `<option value="${value}" ${member?.role === value ? 'selected' : ''}>${label}</option>`).join('');
+ openModal(`<form id="vercelAccountForm">
+  <h2>${member ? 'Editar acesso' : 'Criar usuário'}</h2>
+  ${field('Nome de exibição', 'label', member?.label || '', 'text', true)}
+  ${member?.externalLogin ? `<p>Login: ${esc(member.login)}. Credenciais gerenciadas pela Vercel.</p>` : `
+  ${field('E-mail de login', 'login', member?.login || '', 'email', !member)}
+  <label class="field">${member ? 'Nova senha' : 'Senha inicial'}
+   <input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="256" ${member ? '' : 'required'}>
+  </label>
+  <p class="muted">${passwordHelp}</p>`}
+  ${selectField('Perfil', 'role', profileOptions)}
+  ${selectField('Usuário comercial (obrigatório para analista)', 'sellerId',
+   '<option value="">Selecionar</option>' + opts(state.sellers.filter(seller => seller.active !== false), member?.seller_id || ''))}
+  <p role="alert" id="vercelAccountError"></p>
+  ${footer()}
+ </form>`);
+ const form = $('#vercelAccountForm');
+ form.onsubmit = async event => {
+  event.preventDefault();
+  const {login, password, ...data} = Object.fromEntries(new FormData(form));
+  const error = $('#vercelAccountError');
+  if (member) data.userId = member.user_id;
+  if (!member?.externalLogin && (!member || password || login.trim() !== (member.login || ''))) {
+   if (!password) {
+    error.textContent = 'Defina uma senha para salvar o e-mail de login.';
+    return;
+   }
+   data.credentials = {login:login.trim(), password};
+  }
+  const submit = event.submitter;
+  if (submit) submit.disabled = true;
+  error.textContent = '';
+  try {
+   await nativeFetch('access/members?workspaceId=' + encodeURIComponent(workspace),
+    {method:'POST', body:JSON.stringify(data)});
+   if (form.elements.password) form.elements.password.value = '';
+   if (form.isConnected) closeModal();
+   if (page === 'access_members' && activeWorkspace === workspace) renderCrmMembers();
+  } catch (failure) {
+   error.textContent = failure.message;
+  } finally {
+   if (submit) submit.disabled = false;
+  }
+ };
+}

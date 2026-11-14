@@ -53,9 +53,9 @@ Sem configuração válida, a API responde 503 e não concede acesso master auto
 
 Abra /login.html no endereço Vercel. Entre com o login e senha configurados. O login master acessa todas as empresas do novo banco.
 
-Para cada administrador ou analista, gere um objeto com npm run auth:user usando um ID único e estável e acrescente o objeto à lista CRM_AUTH_USERS_JSON. Redeploy aplica a lista. Esse cadastro autoriza a autenticação, mas não concede acesso aos dados sozinho.
+No CRM, o Gestor Master usa **Acessos da empresa → Criar usuário** para definir e-mail, senha inicial e perfil. Analistas precisam de um usuário comercial ativo da empresa. O painel permite editar perfis, redefinir senhas e revogar acessos. As contas criadas no painel são salvas no Turso e funcionam assim que o cadastro é concluído. A redefinição da senha e a revogação invalidam as sessões dessas contas.
 
-No CRM, use Acessos da empresa para vincular exatamente aquele ID a uma empresa/perfil; analistas também precisam de um usuário comercial. Remover o objeto do ambiente ou alterar seu passwordHash invalida as sessões correspondentes. Revogar o vínculo no CRM bloqueia o acesso aos dados imediatamente.
+As credenciais já cadastradas em `CRM_AUTH_USERS_JSON` continuam válidas. Para alterar a senha dessas contas, atualize o hash na Vercel e faça redeploy. Revogar o vínculo no painel bloqueia o acesso aos dados da empresa.
 
 A sessão dura até oito horas e fica em cookie HttpOnly, Secure, SameSite=Strict. A API deriva a identidade da sessão assinada e descarta cabeçalhos de identidade enviados pelo cliente. Login tem limite de tentativas por IP, mantido no banco. Mudanças exigem Origin correspondente a APP_URL.
 
