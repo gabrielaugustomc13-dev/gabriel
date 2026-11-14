@@ -233,3 +233,7 @@ button.task-row:hover { background: var(--subtle); }
 .lifecycle-filters .field { flex:1 1 180px; }
 .lifecycle-table { overflow-x:auto; }
 .lifecycle-table small { display:block; white-space:pre-wrap; }
+
+body > aside > .nav.crm-module-source,
+.crm-module-tabs[hidden] { display:none; }
+.crm-module-tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0; }
