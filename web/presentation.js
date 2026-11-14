@@ -93,12 +93,17 @@ function overviewContent() {
 function installCrmPresentation() {
   const sidebar = document.querySelector('body > aside');
   const mobileMenu = document.getElementById('mobileMenu');
-  const navKeys = new Map([['Acessos da empresa', 'access_members'], ['Todos os funis', 'all_pipelines']]);
+  const crmMenu = document.createElement('button');
+  crmMenu.type = 'button';
+  crmMenu.className = 'nav';
+  crmMenu.textContent = 'CRM';
+  sidebar.querySelector('.asidefoot').before(crmMenu);
+  const navKeys = new Map([['Acessos da empresa', 'access_members'], ['Todos os funis', 'all_pipelines'], ['CRM', 'crm']]);
   for (const button of sidebar.querySelectorAll('.nav')) {
     const label = button.textContent.trim().replace(/^[^\p{L}\p{N}]+/u, '');
     const key = button.dataset.page || navKeys.get(label);
     button.classList.add('crm-nav-item');
-    button.dataset.icon = ['sales_teams', 'lifecycle'].includes(key) ? 'clients' : key;
+    button.dataset.icon = key === 'crm' ? 'pipeline' : ['sales_teams', 'lifecycle'].includes(key) ? 'clients' : key;
     button.replaceChildren();
     button.insertAdjacentHTML('afterbegin', crmIcon(button.dataset.icon));
     const text = document.createElement('span');
@@ -109,18 +114,26 @@ function installCrmPresentation() {
   // Agrupa o menu: os botões continuam filhos diretos da lateral, só mudam de ordem.
   const navGroups = [
     ['', ['overview']],
-    ['RELACIONAMENTO', ['lifecycle', 'clients', 'pipeline', 'companies', 'sales_teams']],
+    ['RELACIONAMENTO', ['lifecycle', 'crm']],
     ['OPERAÇÃO', ['whatsapp', 'automations', 'activity_log']],
-    ['ADMINISTRAÇÃO', ['branding', 'access_members', 'all_pipelines']]
+    ['ADMINISTRAÇÃO', ['branding', 'access_members']]
   ];
   const foot = sidebar.querySelector('.asidefoot');
   const navButtons = [...sidebar.querySelectorAll('.nav')];
+  const crmPages = ['pipeline', 'clients', 'companies', 'sales_teams', 'all_pipelines'];
+  const crmButtons = crmPages.map(key => navButtons.find(button => button.dataset.navKey === key)).filter(Boolean);
+  for (const button of crmButtons) button.classList.add('crm-module-source');
+  const crmTabs = document.createElement('nav');
+  crmTabs.className = 'tabs crm-module-tabs';
+  crmTabs.setAttribute('aria-label', 'Seções do CRM');
+  crmTabs.hidden = true;
+  document.getElementById('app').before(crmTabs);
   const grouped = new Set(navGroups.flatMap(([, keys]) => keys));
   const sections = [];
   sidebar.querySelector('.label')?.remove();
   for (const [title, keys] of navGroups) {
     const items = keys.map(k => navButtons.find(b => b.dataset.navKey === k)).filter(Boolean);
-    if (title === 'ADMINISTRAÇÃO') items.push(...navButtons.filter(b => !grouped.has(b.dataset.navKey)));
+    if (title === 'ADMINISTRAÇÃO') items.push(...navButtons.filter(b => !grouped.has(b.dataset.navKey) && !crmPages.includes(b.dataset.navKey)));
     if (!items.length) continue;
     let heading = null;
     if (title) {
@@ -132,6 +145,29 @@ function installCrmPresentation() {
     for (const item of items) foot.before(item);
     sections.push([heading, items]);
   }
+  const previousRender = render;
+  render = function () {
+    previousRender();
+    const inModule = crmPages.includes(page) || page === 'deal';
+    const available = crmButtons.filter(button => !button.hidden);
+    crmMenu.hidden = !crmSession || !available.length;
+    crmMenu.classList.toggle('active', inModule);
+    crmMenu.onclick = () => {
+      if (!inModule) available[0]?.click();
+    };
+    crmTabs.hidden = !inModule || available.length < 2;
+    crmTabs.replaceChildren();
+    if (!crmTabs.hidden) for (const source of available) {
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      const selected = source.dataset.navKey === (page === 'deal' ? 'pipeline' : page);
+      tab.className = 'btn' + (selected ? ' primary' : '');
+      tab.textContent = source.textContent.trim();
+      if (selected) tab.setAttribute('aria-current', 'page');
+      tab.onclick = () => source.click();
+      crmTabs.append(tab);
+    }
+  };
   // Perfis restritos ocultam itens; um grupo sem itens visíveis não mostra o título.
   const syncGroupHeadings = () => {
     for (const [heading, items] of sections) if (heading) heading.hidden = items.every(b => b.hidden);

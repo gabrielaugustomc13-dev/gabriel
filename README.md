@@ -1,4 +1,4 @@
-# Unic Flow
+# FLEXÍVEL
 
 Plataforma de gestão de clientes com múltiplas empresas, funis comerciais, automações e acompanhamento de planos, aulas, presenças, pagamentos e interações.
 
