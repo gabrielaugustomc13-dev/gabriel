@@ -68,6 +68,6 @@ async function crmMembers(request,env,url,a){
  }
  const writeMember=env.DB.prepare('INSERT INTO crm_access_members (user_id,workspace_id,role,seller_id,label,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET workspace_id=excluded.workspace_id,role=excluded.role,seller_id=excluded.seller_id,label=excluded.label,updated_at=excluded.updated_at').bind(b.userId,wid,b.role,b.role==='analyst'?b.sellerId:'',String(b.label||b.userId).slice(0,100),new Date().toISOString());
  try{await env.DB.batch([writeMember,...(credentialWrite?[credentialWrite]:[]),recordAccess('linked')])}
- catch(error){if(credentialWrite&&/UNIQUE constraint failed: crm_auth_users.login/.test(error.message))return json({error:'E-mail já utilizado.'},409);throw error}
+ catch(error){if(credentialWrite&&/UNIQUE constraint failed: crm_auth_users.login/.test(error.message))return json({error:'Login já utilizado.'},409);throw error}
  return json({saved:true});
 }
