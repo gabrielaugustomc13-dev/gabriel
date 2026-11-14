@@ -22,30 +22,69 @@ function crmIcon(name) {
   return `<svg class="crm-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${crmIcons[name] || crmIcons.overview}</svg>`;
 }
 function overviewContent() {
-  const open = state.deals.filter(d => !d.status || d.status === 'Aberta');
-  const value = open.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
+  const isOpen = d => !d.status || d.status === 'Aberta';
+  const open = state.deals.filter(isOpen);
+  const sum = list => list.reduce((total, d) => total + (Number(d.value) || 0), 0);
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const closedThisMonth = state.deals.filter(d => {
+    if (!d.closedAt || isOpen(d)) return false;
+    const at = new Date(d.closedAt);
+    return at.getFullYear() === now.getFullYear() && at.getMonth() === now.getMonth();
+  });
+  const won = closedThisMonth.filter(d => d.status === 'Ganha');
+  const lost = closedThisMonth.filter(d => d.status === 'Perdida');
+  const decided = won.length + lost.length;
   const metrics = [
-    ['clients', 'Clientes cadastrados', state.clients.length, 'Contatos da empresa'],
     ['pipeline', 'Negociações abertas', open.length, 'Em andamento nos funis'],
-    ['value', 'Valor em negociação', money(value), 'Soma das negociações abertas']
+    ['value', 'Valor em negociação', money(sum(open)), 'Soma das negociações abertas'],
+    ['access_members', 'Vendas no mês', won.length, won.length ? money(sum(won)) + ' em vendas' : 'Nenhuma venda registrada no mês'],
+    ['activity_log', 'Conversão no mês', decided ? Math.round(won.length / decided * 100) + '%' : '—',
+      decided ? `${won.length} ${won.length === 1 ? 'ganha' : 'ganhas'} e ${lost.length} ${lost.length === 1 ? 'perdida' : 'perdidas'}` : 'Nenhuma negociação encerrada no mês']
   ];
-  const pipelines = (state.pipelines || []).map(p => ({
-    name: p.name, count: open.filter(d => d.pipelineId === p.id).length
-  }));
-  const max = Math.max(1, ...pipelines.map(p => p.count));
+  const pipelines = state.pipelines?.length
+    ? state.pipelines.map(p => ({ id: p.id, name: p.name, stages: p.stages.map(s => s.name) }))
+    : [{ id: undefined, name: 'Funil comercial', stages: typeof stages === 'undefined' ? [] : stages }];
+  const funnels = pipelines.map(p => {
+    const deals = open.filter(d => p.id === undefined || d.pipelineId === p.id);
+    const rows = p.stages.map((name, i) => {
+      const items = deals.filter(d => d.stage === i);
+      return { name, count: items.length, value: sum(items) };
+    });
+    const max = Math.max(1, ...rows.map(r => r.count));
+    return `<div class="funnel-block">${pipelines.length > 1 ? `<h3>${esc(p.name)}</h3>` : ''}
+      <ul class="pipeline-summary">${rows.map(r => `<li><div><span>${esc(r.name)}</span><span class="funnel-figures"><span class="muted">${money(r.value)}</span><strong>${r.count}</strong></span></div>
+        <div class="progress" aria-hidden="true"><span style="width:${r.count / max * 100}%"></span></div></li>`).join('') || '<li class="empty">Este funil ainda não tem etapas.</li>'}</ul></div>`;
+  }).join('');
+  const pending = (state.tasks || []).filter(t => !t.done && t.due && t.due <= today)
+    .sort((x, y) => x.due.localeCompare(y.due));
+  const overdue = pending.filter(t => t.due < today).length;
+  const shortDate = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+  const taskRows = pending.slice(0, 6).map(t => {
+    const deal = t.dealId && state.deals.find(d => d.id === t.dealId);
+    const body = `<span class="task-due${t.due < today ? ' is-late' : ''}">${t.due < today ? shortDate(t.due) : 'Hoje'}</span>
+      <span class="task-text"><strong>${esc(t.title)}</strong><span class="muted">${esc([deal?.name, t.owner].filter(Boolean).join(' · ') || 'Sem negociação vinculada')}</span></span>`;
+    return deal ? `<li><button type="button" class="task-row" onclick="openDeal('${esc(deal.id)}')">${body}</button></li>` : `<li><div class="task-row">${body}</div></li>`;
+  }).join('');
   return head('Visão geral', 'Acompanhe os resultados comerciais de ' + esc(state.company) + '.', btn('＋ Novo cliente', 'clientForm()'))
     + `<section class="stats" aria-label="Indicadores comerciais">${metrics.map(([icon, label, total, note]) => `
       <div class="card stat"><div class="stat-label"><span class="stat-icon">${crmIcon(icon)}</span>${label}</div>
       <strong>${total}</strong><span class="muted">${note}</span></div>`).join('')}</section>
     <div class="overview-grid">
       <section class="card overview-panel">
-        <div class="sectionhead"><h2>Carteira por funil</h2><button class="link" onclick="go('pipeline')">Ver funis ${crmIcon('arrow')}</button></div>
-        <p class="muted overview-caption">Negociações abertas por funil</p>
-        <ul class="pipeline-summary">${pipelines.map(p => `<li><div><span>${esc(p.name)}</span><strong>${p.count}</strong></div>
-          <div class="progress" aria-hidden="true"><span style="width:${p.count / max * 100}%"></span></div></li>`).join('') || '<li class="empty">Nenhum funil cadastrado.</li>'}</ul>
+        <div class="sectionhead"><h2>Funil por etapa</h2><button class="link" onclick="go('pipeline')">Ver funis ${crmIcon('arrow')}</button></div>
+        <p class="muted overview-caption">Negociações abertas e valor em cada etapa</p>
+        ${funnels}
       </section>
       <section class="card overview-panel">
-        <div class="sectionhead"><h2>Clientes</h2><button class="link" onclick="go('clients')">Ver todos ${crmIcon('arrow')}</button></div>
+        <div class="sectionhead"><h2>Tarefas para hoje</h2>${overdue ? `<span class="badge task-late-count">${overdue} ${overdue === 1 ? 'atrasada' : 'atrasadas'}</span>` : ''}</div>
+        <p class="muted overview-caption">Pendências vencidas ou com prazo hoje</p>
+        <ul class="task-list">${taskRows || '<li class="empty">Nenhuma tarefa pendente para hoje.</li>'}</ul>
+        ${pending.length > 6 ? `<p class="muted task-more">E mais ${pending.length - 6} ${pending.length - 6 === 1 ? 'tarefa' : 'tarefas'}.</p>` : ''}
+      </section>
+      <section class="card overview-panel overview-wide">
+        <div class="sectionhead"><h2>Clientes recentes</h2><button class="link" onclick="go('clients')">Ver todos ${crmIcon('arrow')}</button></div>
         <div class="tablewrap"><table><thead><tr><th>CLIENTE</th><th>EMPRESA</th><th>STATUS</th><th><span class="visually-hidden">Ações</span></th></tr></thead>
         <tbody>${clientRows(state.clients.slice(-4).reverse())}</tbody></table></div>
       </section>
@@ -63,9 +102,42 @@ function installCrmPresentation() {
     button.replaceChildren();
     button.insertAdjacentHTML('afterbegin', crmIcon(button.dataset.icon));
     const text = document.createElement('span');
-    text.textContent = label;
+    text.textContent = key === 'all_pipelines' ? 'Funis por empresa' : label;
     button.append(text);
+    button.dataset.navKey = key || '';
   }
+  // Agrupa o menu: os botões continuam filhos diretos da lateral, só mudam de ordem.
+  const navGroups = [
+    ['', ['overview']],
+    ['VENDAS', ['pipeline', 'clients', 'companies', 'sales_teams']],
+    ['OPERAÇÃO', ['whatsapp', 'automations', 'activity_log']],
+    ['ADMINISTRAÇÃO', ['branding', 'access_members', 'all_pipelines']]
+  ];
+  const foot = sidebar.querySelector('.asidefoot');
+  const navButtons = [...sidebar.querySelectorAll('.nav')];
+  const grouped = new Set(navGroups.flatMap(([, keys]) => keys));
+  const sections = [];
+  sidebar.querySelector('.label')?.remove();
+  for (const [title, keys] of navGroups) {
+    const items = keys.map(k => navButtons.find(b => b.dataset.navKey === k)).filter(Boolean);
+    if (title === 'ADMINISTRAÇÃO') items.push(...navButtons.filter(b => !grouped.has(b.dataset.navKey)));
+    if (!items.length) continue;
+    let heading = null;
+    if (title) {
+      heading = document.createElement('div');
+      heading.className = 'label';
+      heading.textContent = title;
+      foot.before(heading);
+    }
+    for (const item of items) foot.before(item);
+    sections.push([heading, items]);
+  }
+  // Perfis restritos ocultam itens; um grupo sem itens visíveis não mostra o título.
+  const syncGroupHeadings = () => {
+    for (const [heading, items] of sections) if (heading) heading.hidden = items.every(b => b.hidden);
+  };
+  new MutationObserver(syncGroupHeadings).observe(sidebar, { attributes: true, attributeFilter: ['hidden'], subtree: true });
+  syncGroupHeadings();
   function setMobileMenu(open) {
     sidebar.classList.toggle('mobile-menu-open', open);
     mobileMenu.setAttribute('aria-expanded', String(open));
