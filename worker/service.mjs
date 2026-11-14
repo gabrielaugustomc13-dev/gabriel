@@ -41,6 +41,7 @@ try{
 const access=await crmAccess(request,env);
 if(url.pathname==='/api/native/access/me')return json({access,identity:{userId:request.headers.get('oai-authenticated-user-id'),name:auditActor(request).label},configured:!!env.CRM_MASTER_USER_ID});
 if(!access)return json({error:'Seu usuário ainda não tem acesso a esta operação. Solicite o vínculo ao gestor master.'},403);
+if(access.role==='viewer')return await crmViewerRead(request,env,url,access);
 if(url.pathname==='/api/native/access/members')return await crmMembers(request,env,url,access);
 if(url.pathname.startsWith('/api/native/whatsapp/')){const wid=url.pathname.split('/')[4];if(!crmCompanyAllowed(access,wid)||access.role==='analyst')return json({error:'Canal não autorizado'},403);return await waHandler(request,env,url)}
 if(url.pathname==='/api/native/status')return json({engine:'native',storage:'D1',scheduler:'request_driven',unattended:false,integrations:'not_connected',audience:'role_scoped',message:'Dados e jobs persistidos no servidor. Agendador contínuo da hospedagem não configurado.'});

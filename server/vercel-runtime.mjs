@@ -43,7 +43,7 @@ export async function route(request,env,worker) {
   const stored=claims&&!users.some(u=>u.id===claims.sub)?await storedAccount(env.DB,'id',claims.sub):null;
   const user=sessionUser(request,env,stored?[stored]:users);if(!user)return json({error:'Entre no CRM para continuar.'},401);
   if(!url.pathname.startsWith('/api/native/'))return json({error:'Rota não encontrada'},404);
-  const workerEnv=url.pathname==='/api/native/access/members'?{...env,accountManagement:accountManagement(env.DB,users)}:env;
+  const workerEnv=url.pathname==='/api/native/access/members'?{...env,viewerEnabled:true,accountManagement:accountManagement(env.DB,users)}:{...env,viewerEnabled:true};
   const tasks=[],response=await worker.fetch(trustedRequest(request,user,env),workerEnv,{waitUntil:p=>tasks.push(p)});
   await Promise.all(tasks);
   if(url.pathname==='/api/native/status'&&response.ok) {
