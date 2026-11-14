@@ -224,3 +224,12 @@ button.task-row:hover { background: var(--subtle); }
   .stat strong { margin-top: 7px; }
   .breadcrumb { font-size: 11px; }
 }
+
+.lifecycle-tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0; }
+.lifecycle-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:1rem; }
+.lifecycle-metrics strong { display:block; margin-top:.45rem; font-size:1.5rem; }
+.lifecycle-section { margin:1rem 0; }
+.lifecycle-filters { display:flex; flex-wrap:wrap; align-items:end; gap:1rem; }
+.lifecycle-filters .field { flex:1 1 180px; }
+.lifecycle-table { overflow-x:auto; }
+.lifecycle-table small { display:block; white-space:pre-wrap; }

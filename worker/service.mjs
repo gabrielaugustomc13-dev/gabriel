@@ -12,9 +12,10 @@ async function putWorkspace(env,id,state,name,expected,initialImport=false,whats
   if(existing && Object.hasOwn(existing.state,key))state[key]=existing.state[key];
   else if(existing||!initialImport)delete state[key];
  }
+ if(existing?.state.lifecycle && !Object.hasOwn(state,'lifecycle'))state.lifecycle=existing.state.lifecycle;
  CRMCore.validateSalesTeams(state);CRMCore.syncSellerNames(state,existing?.state);NativeCore.validatePipelineRoutes(state);
  for(const d of state.deals||[])if(d.pipelineJourney&&d.pipelineId!==d.pipelineJourney.targetPipelineId)throw Error('Conclua o subprocesso antes de transferir manualmente para outro funil');
- validateState(state,existing?.state,!existing&&initialImport);state.workspaceId=id;NativeCore.init(state);
+ validateState(state,existing?.state,!existing&&initialImport);LifecycleCore.validate(state);state.workspaceId=id;NativeCore.init(state);
  // Apply routing to direct snapshot writes too; existing stationary records are not swept on rule activation.
  if(existing||!initialImport)for(const d of state.deals){const old=existing?.state.deals.find(x=>x.id===d.id);if(!PipelineEditorCore.sameStage(existing?.state,state,old,d)||d.pipelineRouteError)NativeCore.advanceRoute(state,d)}
  validateState(state,existing?.state,!existing&&initialImport);NativeCore.tick(state);

@@ -98,7 +98,7 @@ function installCrmPresentation() {
     const label = button.textContent.trim().replace(/^[^\p{L}\p{N}]+/u, '');
     const key = button.dataset.page || navKeys.get(label);
     button.classList.add('crm-nav-item');
-    button.dataset.icon = key === 'sales_teams' ? 'clients' : key;
+    button.dataset.icon = ['sales_teams', 'lifecycle'].includes(key) ? 'clients' : key;
     button.replaceChildren();
     button.insertAdjacentHTML('afterbegin', crmIcon(button.dataset.icon));
     const text = document.createElement('span');
@@ -109,7 +109,7 @@ function installCrmPresentation() {
   // Agrupa o menu: os botões continuam filhos diretos da lateral, só mudam de ordem.
   const navGroups = [
     ['', ['overview']],
-    ['VENDAS', ['pipeline', 'clients', 'companies', 'sales_teams']],
+    ['RELACIONAMENTO', ['lifecycle', 'clients', 'pipeline', 'companies', 'sales_teams']],
     ['OPERAÇÃO', ['whatsapp', 'automations', 'activity_log']],
     ['ADMINISTRAÇÃO', ['branding', 'access_members', 'all_pipelines']]
   ];
