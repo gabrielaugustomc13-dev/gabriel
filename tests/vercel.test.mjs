@@ -145,3 +145,38 @@ test('customer lifecycle survives commercial edits and stays private from analys
  assert.equal(restricted.status,200);
  assert.equal(restricted.body.state.lifecycle,undefined);
 });
+
+test('viewer only receives approved screens and selected client records', async t => {
+ const {call}=await setup(t);
+ const path='native/workspaces/gym';
+ const clients=[{id:'ana',name:'Ana',email:'private@example.com'},{id:'bia',name:'Bia'}];
+ const records=clients.map(client=>({id:client.id,clientId:client.id,title:client.name,date:'2026-11-14',notes:'',status:'Pendente',cents:100,paidAt:''}));
+ const state={company:'Academia',clients,orgs:[],deals:[],tasks:[],pipelines:[{id:'p',name:'Comercial',stages:[{id:'s',name:'Novo'}]}],
+  lifecycle:{payments:records,classes:records.map(row=>({...row,status:'Presente'}))}};
+ assert.equal((await call(path,{method:'PUT',body:{state,expectedVersion:0,initialImport:true}})).status,200);
+ const members='native/access/members?workspaceId=gym';
+ const account={role:'viewer',label:'Leitura',credentials:{login:'leitura',password:'123'},permissions:{screens:['classes'],clientIds:['ana']}};
+ assert.equal((await call(members,{method:'POST',body:{...account,permissions:{screens:[],clientIds:['unknown']}}})).status,400);
+ assert.equal((await call(members,{method:'POST',body:account})).status,200);
+ const login=await call('auth/login',{user:null,method:'POST',body:{login:'leitura',password:'123'}});
+ assert.equal(login.status,200);
+ const headers={cookie:login.headers.get('set-cookie').split(';')[0]};
+ const read=async(endpoint,method='GET')=>call(endpoint,{method,user:null,headers});
+ assert.equal((await read('native/access/me')).body.access.role,'viewer');
+ const data=(await read('native/viewer')).body;
+ assert.equal(data.screenData.classes.length,2);
+ assert.equal(data.screenData.payments,undefined);
+ assert.deepEqual(data.recordData.payments.map(row=>row.clientId),['ana']);
+ assert.ok(!JSON.stringify(data).includes('private@example.com'));
+ assert.equal((await read(path)).status,403);
+ assert.equal((await read(path,'PUT')).status,403);
+ assert.equal((await read(path+'/audit')).status,403);
+ assert.equal((await read('native/viewer','POST')).status,403);
+ const member=(await call(members)).body.items.find(item=>item.login==='leitura');
+ assert.equal(member.role,'viewer');
+ assert.equal((await call(members,{method:'POST',body:{userId:member.user_id,role:'viewer',label:'Leitura',permissions:{screens:[],clientIds:['bia']}}})).status,200);
+ const changed=(await read('native/viewer')).body;
+ assert.deepEqual(changed.clients.map(client=>client.id),['bia']);
+ assert.equal((await call(members,{method:'DELETE',body:{userId:member.user_id}})).status,200);
+ assert.equal((await read('native/viewer')).status,401);
+});
