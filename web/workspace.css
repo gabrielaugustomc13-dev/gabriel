@@ -237,3 +237,8 @@ button.task-row:hover { background: var(--subtle); }
 body > aside > .nav.crm-module-source,
 .crm-module-tabs[hidden] { display:none; }
 .crm-module-tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0; }
+
+.form-setting { margin:1rem 0; }
+.form-setting-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+.form-setting [hidden] { display:none; }
+@media(max-width:600px){.form-setting-grid { grid-template-columns:1fr; }}

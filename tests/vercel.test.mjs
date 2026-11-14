@@ -228,3 +228,39 @@ test('operational agenda, contracts and portal enforce capacity, identity and id
  const audit=await env.DB.prepare("SELECT * FROM native_audit_entries WHERE source = 'customer_operations'").all();
  assert.ok(audit.results.length>0);
 });
+
+test('form options are validated, persisted per company, audited and protected from analyst edits',async t=>{
+ const {call,env}=await setup(t);
+ const state={company:'Empresa A',clients:[],orgs:[],deals:[],tasks:[],pipelines:[],sellers:[{id:'seller',name:'Ana',active:true}]};
+ const settings={session:{
+  title:{mode:'list',options:['Pilates','Yoga'],defaultValue:'Pilates'},
+  duration:{mode:'list',options:['30','60'],defaultValue:'60'},
+  capacity:{mode:'text',options:[],defaultValue:'8'}
+ }};
+ const endpoint='native/workspaces/options-a';
+ assert.equal((await call(endpoint,{method:'PUT',body:{state:{...state,formSettings:settings},expectedVersion:0,initialImport:true}})).status,200);
+ assert.equal((await call('native/workspaces/options-b',{method:'PUT',body:{state,expectedVersion:0,initialImport:true}})).status,200);
+ assert.equal((await call('native/workspaces/options-b')).body.state.formSettings,undefined);
+ const original=(await call(endpoint)).body;
+ assert.deepEqual(original.state.formSettings,settings);
+ const invalid=structuredClone(original.state);
+ invalid.formSettings.session.capacity.defaultValue='-8';
+ assert.equal((await call(endpoint,{method:'PUT',body:{state:invalid,expectedVersion:original.version}})).status,400);
+ invalid.formSettings=structuredClone(settings);
+ invalid.formSettings.session.title.defaultValue='Ausente da lista';
+ assert.equal((await call(endpoint,{method:'PUT',body:{state:invalid,expectedVersion:original.version}})).status,400);
+ const {formSettings,...legacy}=original.state;
+ const preserved=await call(endpoint,{method:'PUT',body:{state:legacy,expectedVersion:original.version}});
+ assert.deepEqual(preserved.body.state.formSettings,settings);
+ const changed=structuredClone(preserved.body.state);
+ changed.formSettings.session.capacity.defaultValue='10';
+ assert.equal((await call(endpoint,{method:'PUT',body:{state:changed,expectedVersion:preserved.body.version}})).status,200);
+ await call('native/access/members?workspaceId=options-a',{method:'POST',body:{userId:'analyst',role:'analyst',label:'Ana',sellerId:'seller'}});
+ const analyst=(await call(endpoint,{user:'analyst'})).body;
+ assert.equal(analyst.state.formSettings,undefined);
+ const attempt={...analyst.state,formSettings:{}};
+ assert.equal((await call(endpoint,{user:'analyst',method:'PUT',body:{state:attempt,expectedVersion:analyst.version}})).status,200);
+ assert.equal((await call(endpoint)).body.state.formSettings.session.capacity.defaultValue,'10');
+ const audit=await env.DB.prepare("SELECT changes_json FROM native_audit_entries WHERE workspace_id = 'options-a' AND action = 'workspace.settings_changed'").all();
+ assert.ok(audit.results.some(row=>row.changes_json.includes('formSettings')));
+});

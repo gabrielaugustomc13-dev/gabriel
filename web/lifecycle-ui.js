@@ -145,6 +145,7 @@ function lifecycleForm(key, clientId, row) {
    ${type.statuses.length ? selectField('Status','status',type.statuses.map(status => `<option ${status === row?.status ? 'selected' : ''}>${status}</option>`).join('')) : ''}
    <label class="field">Observações<textarea name="notes" maxlength="2000">${esc(row?.notes)}</textarea></label>
    <p id="lifeError" role="alert"></p>${footer()}</form>`);
+  enhanceConfiguredForm($('#lifeForm'),key,!row);
   $('#lifeForm').onsubmit = async event => {
     event.preventDefault();
     const form = event.currentTarget;
