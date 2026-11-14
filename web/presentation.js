@@ -115,7 +115,7 @@ function installCrmPresentation() {
   const navGroups = [
     ['', ['overview']],
     ['RELACIONAMENTO', ['lifecycle', 'crm']],
-    ['OPERAÇÃO', ['whatsapp', 'automations', 'activity_log']],
+    ['OPERAÇÃO', ['customer_operations', 'whatsapp', 'automations', 'activity_log']],
     ['ADMINISTRAÇÃO', ['branding', 'access_members']]
   ];
   const foot = sidebar.querySelector('.asidefoot');

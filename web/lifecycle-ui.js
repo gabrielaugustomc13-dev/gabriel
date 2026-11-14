@@ -125,6 +125,11 @@ function renderLifecycleRecords(key, client) {
 }
 
 function lifecycleForm(key, clientId, row) {
+  const managed = key==='plans' ? state.customerOperations?.contracts : key==='classes' ? state.customerOperations?.bookings : [];
+  if(row && managed?.some(item=>item.id===row.id)){
+    toast('Edite este registro em Operação e agenda.');
+    page='customer_operations';customerOperationsTab=key==='plans'?'contracts':'agenda';render();return;
+  }
   if (liveProfilePreview || !lifecycleAllowed()) return;
   const formWorkspace = activeWorkspace;
   const draftId = row?.id || uid();

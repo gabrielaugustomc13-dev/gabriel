@@ -9,7 +9,7 @@ function vercelAccountForm(member) {
  const workspace = activeWorkspace;
  const passwordHelp = member?.login ? 'Preencha a nova senha para alterar as credenciais.' : '';
  const profileOptions = [
-  ['admin', 'Administrador'], ['analyst', 'Analista'], ['viewer', 'Visualizador']
+  ['admin', 'Administrador'], ['analyst', 'Analista'], ['viewer', 'Visualizador'], ['customer', 'Cliente (portal)']
  ].map(([value, label]) => `<option value="${value}" ${member?.role === value ? 'selected' : ''}>${label}</option>`).join('');
  openModal(`<form id="vercelAccountForm">
   <h2>${member ? 'Editar acesso' : 'Criar usuário'}</h2>
@@ -25,12 +25,13 @@ function vercelAccountForm(member) {
   ${selectField('Perfil', 'role', profileOptions)}
   <div data-viewer-seller>${selectField('Usuário comercial (obrigatório para analista)', 'sellerId',
    '<option value="">Selecionar</option>' + opts(state.sellers.filter(seller => seller.active !== false), member?.seller_id || ''))}</div>
+  <div data-customer-profile hidden>${selectField('Cliente do portal','portalClientId','<option value="">Selecionar</option>'+opts(state.clients,member?.permissions?.portalClientId||''))}</div>
   <div data-viewer-permissions hidden>
    <fieldset><legend>Telas liberadas</legend>${Object.entries(viewerScreens).map(([key,label])=>
-    `<label class="field"><span><input type="checkbox" name="screens" value="${key}" ${member?.permissions?.screens.includes(key)?'checked':''}> ${label}</span></label>`).join('')}</fieldset>
+    `<label class="field"><span><input type="checkbox" name="screens" value="${key}" ${member?.permissions?.screens?.includes(key)?'checked':''}> ${label}</span></label>`).join('')}</fieldset>
    <fieldset><legend>Fichas específicas</legend><label class="field">Buscar cliente<input type="search" data-viewer-search></label>
     <div style="max-height:14rem;overflow:auto">${state.clients.map(client=>
-     `<label class="field" data-viewer-client><span><input type="checkbox" name="clientIds" value="${esc(client.id)}" ${member?.permissions?.clientIds.includes(client.id)?'checked':''}> ${esc(client.name)}</span></label>`).join('')||'<p>Nenhum cliente cadastrado.</p>'}</div>
+     `<label class="field" data-viewer-client><span><input type="checkbox" name="clientIds" value="${esc(client.id)}" ${member?.permissions?.clientIds?.includes(client.id)?'checked':''}> ${esc(client.name)}</span></label>`).join('')||'<p>Nenhum cliente cadastrado.</p>'}</div>
    </fieldset>
   </div>
   <p role="alert" id="vercelAccountError"></p>
@@ -38,6 +39,7 @@ function vercelAccountForm(member) {
  </form>`);
  const form = $('#vercelAccountForm');
  const updateProfileFields=()=>{
+  form.querySelector('[data-customer-profile]').hidden=form.elements.role.value!=='customer';
   form.querySelector('[data-viewer-seller]').hidden=form.elements.role.value!=='analyst';
   form.querySelector('[data-viewer-permissions]').hidden=form.elements.role.value!=='viewer';
  };
@@ -50,7 +52,8 @@ function vercelAccountForm(member) {
  form.onsubmit = async event => {
   event.preventDefault();
   const values=new FormData(form);
-  const {login, password, screens, clientIds, ...data} = Object.fromEntries(values);
+  const {login, password, screens, clientIds, portalClientId, ...data} = Object.fromEntries(values);
+  if(data.role==='customer')data.permissions={portalClientId};
   if(data.role==='viewer')data.permissions={screens:values.getAll('screens'),clientIds:values.getAll('clientIds')};
   const error = $('#vercelAccountError');
   if (member) data.userId = member.user_id;
