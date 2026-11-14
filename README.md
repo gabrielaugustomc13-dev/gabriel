@@ -1,6 +1,6 @@
-# CRM Flexível
+# Unic Flow
 
-CRM modular com múltiplas empresas, negociações B2B, funis, subprocessos, equipes, automações nativas.
+Plataforma de gestão de clientes com múltiplas empresas, funis comerciais, automações e acompanhamento de planos, aulas, presenças, pagamentos e interações.
 
 ## Vercel
 

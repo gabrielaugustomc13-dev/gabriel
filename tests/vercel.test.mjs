@@ -117,3 +117,31 @@ test('master creates, resets and revokes company logins through access managemen
  assert.equal((await login(newPassword)).status,401);
  assert.equal(await env.DB.prepare('SELECT user_id FROM crm_auth_users WHERE user_id = ?').bind(member.user_id).first(),null);
 });
+
+test('customer lifecycle survives commercial edits and stays private from analysts', async t => {
+ const {call}=await setup(t);
+ const state={company:'Academia',clients:[{id:'ana',name:'Ana',status:'Ativo'}],orgs:[],deals:[],tasks:[],
+  pipelines:[{id:'p',name:'Comercial',stages:[{id:'s',name:'Novo'}]}],sellers:[{id:'seller',name:'Analista',active:true}]};
+ const base={clientId:'ana',date:'2026-11-14',notes:''};
+ const lifecycle={
+  plans:[{...base,id:'p1',title:'Mensal',status:'Ativo',endDate:'2026-12-14'}],
+  classes:[{...base,id:'c1',title:'Pilates',status:'Presente'}],
+  payments:[{...base,id:'v1',title:'Mensalidade',cents:14990,status:'Pago',paidAt:'2026-11-13'}],
+  notes:[{...base,id:'n1',title:'Avaliação inicial'}]
+ };
+ const endpoint='native/workspaces/gym';
+ assert.equal((await call(endpoint,{method:'PUT',body:{state:{...state,lifecycle},expectedVersion:0,initialImport:true}})).status,200);
+ const stored=(await call(endpoint)).body;
+ assert.deepEqual(stored.state.lifecycle,lifecycle);
+ const {lifecycle:oldClientOmission,...commercial}=stored.state;
+ const update=await call(endpoint,{method:'PUT',body:{state:commercial,expectedVersion:stored.version}});
+ assert.deepEqual(update.body.state.lifecycle,lifecycle);
+ const invalid=structuredClone(update.body.state);
+ invalid.lifecycle.payments[0].clientId='missing';
+ assert.equal((await call(endpoint,{method:'PUT',body:{state:invalid,expectedVersion:update.body.version}})).status,400);
+ const path='native/access/members?workspaceId=gym';
+ assert.equal((await call(path,{method:'POST',body:{userId:'analyst',role:'analyst',sellerId:'seller'}})).status,200);
+ const restricted=await call(endpoint,{user:'analyst'});
+ assert.equal(restricted.status,200);
+ assert.equal(restricted.body.state.lifecycle,undefined);
+});
